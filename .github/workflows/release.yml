@@ -33,7 +33,9 @@ jobs:
         env:
           # Avoid build failures when signing certs are not configured.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run electron:build
+        # Prevent electron-builder from trying to publish by itself (it would require GH_TOKEN).
+        # We publish via softprops/action-gh-release using GitHub-provided GITHUB_TOKEN.
+        run: npm run electron:build -- --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
