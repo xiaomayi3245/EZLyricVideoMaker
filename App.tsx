@@ -232,8 +232,22 @@ export default function App() {
 
     // 檢查圖片
     if (data.useMultipleImages) {
-      if (data.imageMarkers.length === 0 || !data.imageMarkers.every(m => m.imageBase64)) {
-        setError('請確保所有場景都已生成圖片');
+      console.log('Multi-scene mode - validating images...');
+      console.log('Total markers:', data.imageMarkers.length);
+      console.log('Markers with images:', data.imageMarkers.filter(m => m.imageBase64).length);
+
+      if (data.imageMarkers.length === 0) {
+        setError('請先標記場景並生成圖片');
+        return;
+      }
+
+      const missingImages = data.imageMarkers.filter(m => !m.imageBase64);
+      if (missingImages.length > 0) {
+        const sceneNumbers = missingImages.map((m, i) => {
+          const index = data.imageMarkers.indexOf(m);
+          return index + 1;
+        }).join(', ');
+        setError(`場景 ${sceneNumbers} 尚未生成圖片，請先生成所有場景圖片`);
         return;
       }
     } else {
@@ -653,23 +667,58 @@ export default function App() {
         {step === AppStep.PREVIEW_DOWNLOAD && (
           <div className="flex flex-col gap-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Cover Art Preview */}
+              {/* Cover Art / Scene Images Preview */}
               <div className="flex flex-col gap-2">
-                <h4 className="text-sm font-medium text-zinc-400">Generated Cover Art</h4>
-                <div className="aspect-square w-full rounded-xl overflow-hidden border border-zinc-700 relative group">
-                  {data.imageBase64 && (
-                    <img
-                      src={`data:${data.imageMimeType};base64,${data.imageBase64}`}
-                      alt="Generated Art"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={downloadImage} className="text-white bg-black/50 p-2 rounded-full backdrop-blur hover:bg-white/20 transition-colors">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    </button>
+                <h4 className="text-sm font-medium text-zinc-400">
+                  {data.useMultipleImages ? `場景圖片 (${data.imageMarkers.length})` : 'Generated Cover Art'}
+                </h4>
+
+                {data.useMultipleImages ? (
+                  // 多場景模式：顯示所有場景圖片
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {data.imageMarkers.map((marker, index) => (
+                      <div key={marker.id} className="relative group">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-zinc-500">場景 {index + 1}</span>
+                          {marker.imageBase64 ? (
+                            <span className="text-xs text-green-500">✓</span>
+                          ) : (
+                            <span className="text-xs text-red-500">✗ 未生成</span>
+                          )}
+                        </div>
+                        {marker.imageBase64 ? (
+                          <div className="aspect-video w-full rounded-lg overflow-hidden border border-zinc-700">
+                            <img
+                              src={`data:${marker.imageMimeType};base64,${marker.imageBase64}`}
+                              alt={`Scene ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-video w-full rounded-lg border border-zinc-700 bg-zinc-900 flex items-center justify-center">
+                            <span className="text-xs text-zinc-600">圖片未生成</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  // 單圖片模式：顯示封面
+                  <div className="aspect-square w-full rounded-xl overflow-hidden border border-zinc-700 relative group">
+                    {data.imageBase64 && (
+                      <img
+                        src={`data:${data.imageMimeType};base64,${data.imageBase64}`}
+                        alt="Generated Art"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button onClick={downloadImage} className="text-white bg-black/50 p-2 rounded-full backdrop-blur hover:bg-white/20 transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Video Action Area */}
