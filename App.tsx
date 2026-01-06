@@ -226,6 +226,63 @@ export default function App() {
     }
   };
 
+  const regenerateSceneImage = async (markerId: string) => {
+    const marker = data.imageMarkers.find(m => m.id === markerId);
+    if (!marker) return;
+
+    // 標記為生成中
+    setData(prev => ({
+      ...prev,
+      imageMarkers: prev.imageMarkers.map(m =>
+        m.id === markerId ? { ...m, isGenerating: true } : m
+      ),
+    }));
+
+    try {
+      const prompt = marker.customPrompt || `Scene for music video.
+
+Lyrics: "${marker.lyrics.substring(0, 500)}"
+
+Global Style: ${data.globalImageStyle || "Cinematic, cohesive visual narrative"}
+
+Requirements:
+- High quality digital art
+- Square 1:1 aspect ratio
+- Consistent color palette and artistic style
+- Visual representation of the lyrics' mood and meaning
+- No text or words in the image
+- Professional music video aesthetic`;
+
+      const imageData = await generateCoverImage(marker.lyrics, prompt);
+
+      // 更新圖片
+      setData(prev => ({
+        ...prev,
+        imageMarkers: prev.imageMarkers.map(m =>
+          m.id === markerId
+            ? {
+              ...m,
+              imageBase64: imageData.data,
+              imageMimeType: imageData.mimeType,
+              isGenerating: false,
+            }
+            : m
+        ),
+      }));
+    } catch (err: any) {
+      console.error('Failed to regenerate scene image:', err);
+      setError(`場景圖片重新生成失敗: ${err.message}`);
+
+      // 移除生成中狀態
+      setData(prev => ({
+        ...prev,
+        imageMarkers: prev.imageMarkers.map(m =>
+          m.id === markerId ? { ...m, isGenerating: false } : m
+        ),
+      }));
+    }
+  };
+
   // -- Step 5: Video Generation (FFmpeg) --
   const generateVideo = async () => {
     if (!data.audioFile || !data.srtContent) return;
@@ -617,6 +674,7 @@ export default function App() {
                       onEdit={(m) => console.log('Edit', m)}
                       onDelete={handleDeleteMarker}
                       onPromptChange={handleMarkerPromptChange}
+                      onRegenerate={regenerateSceneImage}
                     />
                   ))}
                 </div>
@@ -678,12 +736,26 @@ export default function App() {
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {data.imageMarkers.map((marker, index) => (
                       <div key={marker.id} className="relative group">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-zinc-500">場景 {index + 1}</span>
-                          {marker.imageBase64 ? (
-                            <span className="text-xs text-green-500">✓</span>
-                          ) : (
-                            <span className="text-xs text-red-500">✗ 未生成</span>
+                        <div className="flex items-center gap-2 mb-1 justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-zinc-500">場景 {index + 1}</span>
+                            {marker.imageBase64 ? (
+                              <span className="text-xs text-green-500">✓</span>
+                            ) : (
+                              <span className="text-xs text-red-500">✗ 未生成</span>
+                            )}
+                          </div>
+                          {marker.imageBase64 && (
+                            <button
+                              onClick={() => regenerateSceneImage(marker.id)}
+                              disabled={marker.isGenerating}
+                              className="text-xs px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              {marker.isGenerating ? '生成中...' : '重新生成'}
+                            </button>
                           )}
                         </div>
                         {marker.imageBase64 ? (

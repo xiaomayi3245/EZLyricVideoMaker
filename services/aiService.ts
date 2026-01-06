@@ -201,6 +201,9 @@ Requirements:
 - Capture the mood and atmosphere of the lyrics
 - Professional album cover style`;
 
+  console.log('Gemini API - Sending request...');
+  console.log('Prompt length:', prompt.length);
+
   const result = await client.models.generateContent({
     model: "gemini-2.5-flash-image",
     contents: [
@@ -211,16 +214,42 @@ Requirements:
     ]
   });
 
+  console.log('Gemini API - Response received');
+  console.log('Result structure:', JSON.stringify(result, null, 2));
+
   const candidate = result.candidates?.[0];
   if (!candidate) {
+    console.error('No candidates in response');
+    console.error('Full result:', result);
     throw new Error("No image generated");
+  }
+
+  console.log('Candidate found');
+  console.log('Candidate content:', JSON.stringify(candidate.content, null, 2));
+  console.log('Number of parts:', candidate.content?.parts?.length);
+
+  if (candidate.content?.parts) {
+    candidate.content.parts.forEach((part, index) => {
+      console.log(`Part ${index}:`, Object.keys(part));
+      if ('inlineData' in part) {
+        console.log(`  - Has inlineData`);
+        console.log(`  - MIME type:`, part.inlineData?.mimeType);
+        console.log(`  - Data length:`, part.inlineData?.data?.length);
+      }
+      if ('text' in part) {
+        console.log(`  - Has text:`, part.text?.substring(0, 100));
+      }
+    });
   }
 
   const part = candidate.content?.parts?.find(p => 'inlineData' in p);
   if (!part || !('inlineData' in part)) {
+    console.error('No inlineData found in any part');
+    console.error('Available parts:', candidate.content?.parts?.map(p => Object.keys(p)));
     throw new Error("No image data in response");
   }
 
+  console.log('✓ Image data found successfully');
   return {
     data: part.inlineData.data,
     mimeType: part.inlineData.mimeType || 'image/png'
@@ -310,10 +339,14 @@ export const generateSceneImages = async (
     throw new Error("Please configure API Key first");
   }
 
+  console.log(`Starting batch generation for ${markers.length} scenes...`);
   const updatedMarkers: ImageMarker[] = [];
 
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];
+    console.log(`\n=== Generating scene ${i + 1}/${markers.length} ===`);
+    console.log(`Scene ID: ${marker.id}`);
+    console.log(`Lyrics: ${marker.lyrics.substring(0, 100)}...`);
 
     try {
       // Generate prompt for this scene
@@ -325,30 +358,57 @@ export const generateSceneImages = async (
         marker.customPrompt
       );
 
+      console.log(`Calling AI API for scene ${i + 1}...`);
+
       // Generate image
       const imageData = await generateCoverImage(marker.lyrics, prompt);
 
+      console.log(`✓ Scene ${i + 1} generated successfully`);
+      console.log(`Image size: ${imageData.data.length} characters`);
+
       // Update marker with generated image
-      updatedMarkers.push({
+      const updatedMarker = {
         ...marker,
         imageBase64: imageData.data,
         imageMimeType: imageData.mimeType,
         isGenerating: false,
-      });
+      };
+
+      updatedMarkers.push(updatedMarker);
 
       // Report progress
       if (onProgress) {
-        onProgress(i + 1, markers.length, updatedMarkers[i]);
+        console.log(`Reporting progress: ${i + 1}/${markers.length}`);
+        onProgress(i + 1, markers.length, updatedMarker);
+      }
+
+      // Add delay between API calls to avoid rate limiting (except for last one)
+      if (i < markers.length - 1) {
+        console.log(`Waiting 2 seconds before next generation...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     } catch (error: any) {
-      console.error(`Failed to generate image for scene ${i + 1}:`, error);
+      console.error(`✗ Failed to generate image for scene ${i + 1}:`, error);
+      console.error(`Error message: ${error.message}`);
+      console.error(`Error stack:`, error.stack);
+
       // Keep marker without image but mark as failed
       updatedMarkers.push({
         ...marker,
         isGenerating: false,
       });
+
+      // Still report progress even on failure
+      if (onProgress) {
+        onProgress(i + 1, markers.length, updatedMarkers[i]);
+      }
     }
   }
+
+  console.log(`\n=== Batch generation complete ===`);
+  console.log(`Total scenes: ${markers.length}`);
+  console.log(`Successfully generated: ${updatedMarkers.filter(m => m.imageBase64).length}`);
+  console.log(`Failed: ${updatedMarkers.filter(m => !m.imageBase64).length}`);
 
   return updatedMarkers;
 };

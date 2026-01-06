@@ -7,6 +7,7 @@ interface SceneCardProps {
     onEdit: (marker: ImageMarker) => void;
     onDelete: (id: string) => void;
     onPromptChange: (id: string, prompt: string) => void;
+    onRegenerate?: (id: string) => void;
 }
 
 export const SceneCard: React.FC<SceneCardProps> = ({
@@ -14,7 +15,8 @@ export const SceneCard: React.FC<SceneCardProps> = ({
     sceneNumber,
     onEdit,
     onDelete,
-    onPromptChange
+    onPromptChange,
+    onRegenerate
 }) => {
     const [isEditing, setIsEditing] = React.useState(false);
     const [customPrompt, setCustomPrompt] = React.useState(marker.customPrompt || '');
@@ -130,6 +132,18 @@ export const SceneCard: React.FC<SceneCardProps> = ({
                     </svg>
                     編輯提示詞
                 </button>
+                {marker.imageBase64 && onRegenerate && (
+                    <button
+                        onClick={() => onRegenerate(marker.id)}
+                        disabled={marker.isGenerating}
+                        className="px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-xs rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        重新生成
+                    </button>
+                )}
                 <button
                     onClick={() => onDelete(marker.id)}
                     className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded-lg transition-colors flex items-center justify-center gap-1"
