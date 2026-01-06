@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { ApiProvider, ApiConfig } from '../types';
+import { ApiProvider, ApiConfig, ImageMarker } from '../types';
 
 let cachedConfig: ApiConfig | null = null;
 
@@ -266,3 +266,90 @@ Requirements:
     mimeType: 'image/png'
   };
 };
+
+/**
+ * Generate prompt for a specific scene with style consistency
+ */
+const generateScenePrompt = (
+  lyrics: string,
+  sceneNumber: number,
+  totalScenes: number,
+  globalStyle: string,
+  customPrompt?: string
+): string => {
+  if (customPrompt) {
+    return customPrompt;
+  }
+
+  return `Scene ${sceneNumber} of ${totalScenes} for a music video.
+
+Lyrics for this scene: "${lyrics.substring(0, 500)}"
+
+Global Style: ${globalStyle || "Cinematic, cohesive visual narrative"}
+
+Requirements:
+- High quality digital art
+- Square 1:1 aspect ratio
+- Consistent color palette and artistic style matching the global style
+- Visual representation of the lyrics' mood and meaning
+- No text or words in the image
+- Professional music video aesthetic
+- Maintain visual continuity with other scenes`;
+};
+
+/**
+ * Generate images for multiple scenes with progress tracking
+ */
+export const generateSceneImages = async (
+  markers: ImageMarker[],
+  globalStyle: string,
+  onProgress?: (current: number, total: number, currentMarker: ImageMarker) => void
+): Promise<ImageMarker[]> => {
+  const config = getApiConfig();
+  if (!config) {
+    throw new Error("Please configure API Key first");
+  }
+
+  const updatedMarkers: ImageMarker[] = [];
+
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i];
+
+    try {
+      // Generate prompt for this scene
+      const prompt = generateScenePrompt(
+        marker.lyrics,
+        i + 1,
+        markers.length,
+        globalStyle,
+        marker.customPrompt
+      );
+
+      // Generate image
+      const imageData = await generateCoverImage(marker.lyrics, prompt);
+
+      // Update marker with generated image
+      updatedMarkers.push({
+        ...marker,
+        imageBase64: imageData.data,
+        imageMimeType: imageData.mimeType,
+        isGenerating: false,
+      });
+
+      // Report progress
+      if (onProgress) {
+        onProgress(i + 1, markers.length, updatedMarkers[i]);
+      }
+    } catch (error: any) {
+      console.error(`Failed to generate image for scene ${i + 1}:`, error);
+      // Keep marker without image but mark as failed
+      updatedMarkers.push({
+        ...marker,
+        isGenerating: false,
+      });
+    }
+  }
+
+  return updatedMarkers;
+};
+

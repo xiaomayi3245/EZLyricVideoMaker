@@ -1,5 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { ImageMarker } from '../types';
 
 // Core files CDN - these need to be loaded as blob URLs
 const CORE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js";
@@ -64,7 +65,7 @@ export class VideoService {
   private normalizeSrtTiming(srtContent: string): string {
     const lines = srtContent.split(/\r?\n/);
     const result: string[] = [];
-    
+
     for (const line of lines) {
       if (line.includes('-->')) {
         // Parse and fix timing line
@@ -75,7 +76,7 @@ export class VideoService {
         result.push(line);
       }
     }
-    
+
     return result.join('\n');
   }
 
@@ -86,10 +87,10 @@ export class VideoService {
     // Extract start and end times
     const parts = line.split('-->').map(s => s.trim());
     if (parts.length !== 2) return line;
-    
+
     const startFixed = this.fixSingleTime(parts[0]);
     const endFixed = this.fixSingleTime(parts[1]);
-    
+
     return `${startFixed} --> ${endFixed}`;
   }
 
@@ -143,14 +144,14 @@ export class VideoService {
     // Draw base image (scaled to fit)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
-    
+
     // Calculate image scaling to cover the canvas
     const scale = Math.max(width / baseImage.width, height / baseImage.height);
     const scaledWidth = baseImage.width * scale;
     const scaledHeight = baseImage.height * scale;
     const x = (width - scaledWidth) / 2;
     const y = (height - scaledHeight) / 2;
-    
+
     ctx.drawImage(baseImage, x, y, scaledWidth, scaledHeight);
 
     // Draw subtitle if present
@@ -172,13 +173,13 @@ export class VideoService {
       // Draw each line
       lines.forEach((line, index) => {
         const lineY = startY + index * lineHeight;
-        
+
         // Draw black outline
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 6;
         ctx.lineJoin = 'round';
         ctx.strokeText(line, width / 2, lineY);
-        
+
         // Draw white fill
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText(line, width / 2, lineY);
@@ -189,7 +190,7 @@ export class VideoService {
     const blob = await new Promise<Blob>((resolve) => {
       canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.9);
     });
-    
+
     return new Uint8Array(await blob.arrayBuffer());
   }
 
@@ -204,7 +205,7 @@ export class VideoService {
     for (const char of words) {
       const testLine = currentLine + char;
       const metrics = ctx.measureText(testLine);
-      
+
       if (metrics.width > maxWidth && currentLine) {
         lines.push(currentLine);
         currentLine = char;
@@ -212,20 +213,20 @@ export class VideoService {
         currentLine = testLine;
       }
     }
-    
+
     if (currentLine) {
       lines.push(currentLine);
     }
-    
+
     return lines;
   }
 
   /**
    * Parse SRT content and return array of subtitle objects with timing in seconds
    */
-  private parseSrtToSubtitles(srtContent: string): Array<{text: string, startSec: number, endSec: number}> {
+  private parseSrtToSubtitles(srtContent: string): Array<{ text: string, startSec: number, endSec: number }> {
     const blocks = srtContent.trim().split(/\r?\n\r?\n+/);
-    const subtitles: Array<{text: string, startSec: number, endSec: number}> = [];
+    const subtitles: Array<{ text: string, startSec: number, endSec: number }> = [];
 
     for (const block of blocks) {
       const lines = block.split(/\r?\n/);
@@ -275,12 +276,12 @@ export class VideoService {
    */
   private timeToSeconds(time: string): number | null {
     time = time.trim();
-    
+
     // Split by separators
     const parts = time.split(/[:,\.]/);
-    
+
     let hours = 0, minutes = 0, seconds = 0, ms = 0;
-    
+
     if (parts.length === 4) {
       // HH:MM:SS,mmm
       hours = parseInt(parts[0], 10) || 0;
@@ -292,7 +293,7 @@ export class VideoService {
       const p1 = parseInt(parts[0], 10) || 0;
       const p2 = parseInt(parts[1], 10) || 0;
       const p3 = parseInt(parts[2], 10) || 0;
-      
+
       if (p3 > 59 || parts[2].length === 3) {
         // MM:SS,mmm
         minutes = p1;
@@ -311,7 +312,7 @@ export class VideoService {
     } else {
       return null;
     }
-    
+
     return hours * 3600 + minutes * 60 + seconds + ms / 1000;
   }
 
@@ -321,13 +322,13 @@ export class VideoService {
   private fixSingleTime(time: string): string {
     // Remove any extra whitespace
     time = time.trim();
-    
+
     // Replace all separators with consistent format for parsing
     // Handle formats like: 00:00:13,300 | 00:13:300 | 00:13,300 | 01:06:00,000
-    
+
     // Split by common separators
     const parts = time.split(/[:,\.]/);
-    
+
     if (parts.length === 4) {
       // Format: HH:MM:SS,mmm or HH:MM:SS:mmm
       const [hh, mm, ss, mmm] = parts;
@@ -335,7 +336,7 @@ export class VideoService {
     } else if (parts.length === 3) {
       // Could be MM:SS,mmm (missing hours) or MM:SS:mmm
       const [p1, p2, p3] = parts;
-      
+
       // Check if it looks like MM:SS,mmm (p3 is milliseconds)
       if (parseInt(p3) > 59 || p3.length === 3) {
         // Treat as MM:SS,mmm -> 00:MM:SS,mmm
@@ -349,7 +350,7 @@ export class VideoService {
       const [mm, ss] = parts;
       return `00:${mm.padStart(2, '0')}:${ss.padStart(2, '0')},000`;
     }
-    
+
     // Can't parse, return as-is
     console.warn('Could not parse time:', time);
     return time;
@@ -389,7 +390,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       // Find the timing line (might be first or second line)
       let timingLine = '';
       let textStartIndex = 0;
-      
+
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].includes('-->')) {
           timingLine = lines[i];
@@ -403,20 +404,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       // Parse timing - handle multiple formats:
       // Standard: 00:00:01,000 --> 00:00:04,000 (HH:MM:SS,mmm)
       // Non-standard: 00:01:000 --> 00:04:000 (MM:SS:mmm)
-      
+
       let startTime = '';
       let endTime = '';
-      
+
       // Try standard format first: HH:MM:SS,mmm or HH:MM:SS.mmm
       const standardMatch = timingLine.match(/(\d{1,2}:\d{2}:\d{2})[,.](\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2})[,.](\d{3})/);
-      
+
       if (standardMatch) {
         startTime = this.convertToAssTime(standardMatch[1], standardMatch[2]);
         endTime = this.convertToAssTime(standardMatch[3], standardMatch[4]);
       } else {
         // Try non-standard format: MM:SS:mmm or MM:SS,mmm (missing hours)
         const nonStandardMatch = timingLine.match(/(\d{1,2}):(\d{2})[,:](\d{3})\s*-->\s*(\d{1,2}):(\d{2})[,:](\d{3})/);
-        
+
         if (nonStandardMatch) {
           // Convert MM:SS:mmm to H:MM:SS.cc
           const startMM = nonStandardMatch[1].padStart(2, '0');
@@ -425,7 +426,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           const endMM = nonStandardMatch[4].padStart(2, '0');
           const endSS = nonStandardMatch[5];
           const endMs = nonStandardMatch[6];
-          
+
           startTime = `0:${startMM}:${startSS}.${startMs.slice(0, 2)}`;
           endTime = `0:${endMM}:${endSS}.${endMs.slice(0, 2)}`;
           console.log('Converted non-standard timing:', timingLine, '->', startTime, endTime);
@@ -447,7 +448,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     console.log('ASS events generated:', events.length);
     const result = header + events.join('\n');
     console.log('ASS content preview:', result.slice(0, 500));
-    
+
     return result;
   }
 
@@ -480,41 +481,41 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     onProgress(0.05);
     const fps = 4; // 4 fps for better timing accuracy (0.25s precision)
     const totalFrames = Math.ceil(audioDuration * fps);
-    
+
     console.log(`Generating ${totalFrames} frames at ${fps} fps...`);
 
     // Load the base image
     const baseImage = await this.loadImage(imageFile);
-    
+
     // Cache for rendered frames - reuse if subtitle hasn't changed
     let lastSubtitle = '';
     let cachedFrameData: Uint8Array | null = null;
-    
+
     // Generate each frame with the appropriate subtitle
     for (let i = 0; i < totalFrames; i++) {
       const currentTime = i / fps;
       const currentSubtitle = subtitles.find(
         sub => currentTime >= sub.startSec && currentTime < sub.endSec
       );
-      
+
       const subtitleText = currentSubtitle?.text || '';
-      
+
       // Only re-render if subtitle changed
       if (subtitleText !== lastSubtitle || !cachedFrameData) {
         cachedFrameData = await this.renderFrame(
-          baseImage, 
+          baseImage,
           subtitleText,
-          1280, 
+          1280,
           720,
           subtitlePosition
         );
         lastSubtitle = subtitleText;
       }
-      
+
       const frameName = `frame${i.toString().padStart(5, '0')}.jpg`;
       // Create a copy of the cached data to avoid ArrayBuffer detachment
       await this.ffmpeg.writeFile(frameName, new Uint8Array(cachedFrameData));
-      
+
       if (i % 20 === 0) {
         onProgress(0.05 + (i / totalFrames) * 0.4);
         console.log(`Generated frame ${i + 1}/${totalFrames}`);
@@ -534,7 +535,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     // Combine frames into video with audio
     console.log('Combining frames into video...');
-    
+
     await this.ffmpeg.exec([
       '-framerate', fps.toString(),
       '-i', 'frame%05d.jpg',
@@ -556,6 +557,158 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     // Cleanup
     try {
       // Delete all generated frames
+      for (let i = 0; i < totalFrames; i++) {
+        const frameName = `frame${i.toString().padStart(5, '0')}.jpg`;
+        await this.ffmpeg.deleteFile(frameName);
+      }
+      await this.ffmpeg.deleteFile(audioName);
+      await this.ffmpeg.deleteFile(outputName);
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+
+    onProgress(1);
+
+    const blob = new Blob([data], { type: 'video/mp4' });
+    return URL.createObjectURL(blob);
+  }
+
+  /**
+   * Create video with multiple scene images
+   */
+  async createVideoWithScenes(
+    markers: ImageMarker[],
+    audioFile: File,
+    srtContent: string,
+    subtitlePosition: number,
+    onProgress: (ratio: number) => void
+  ): Promise<string> {
+    if (!this.loaded) throw new Error("FFmpeg not loaded");
+    if (markers.length === 0) throw new Error("No scene markers provided");
+
+    // Validate all markers have images
+    const missingImages = markers.filter(m => !m.imageBase64);
+    if (missingImages.length > 0) {
+      throw new Error(`${missingImages.length} scenes are missing images`);
+    }
+
+    const audioExt = audioFile.name.split('.').pop() || 'mp3';
+    const audioName = `audio.${audioExt}`;
+    const outputName = 'output.mp4';
+
+    onProgress(0.01);
+
+    // Parse subtitles
+    const subtitles = this.parseSrtToSubtitles(srtContent);
+    console.log('Parsed subtitles:', subtitles);
+
+    // Get audio duration
+    const audioDuration = await this.getAudioDuration(audioFile);
+    console.log('Audio duration:', audioDuration, 'seconds');
+
+    // Generate frames with scene-based images
+    onProgress(0.05);
+    const fps = 4;
+    const totalFrames = Math.ceil(audioDuration * fps);
+
+    console.log(`Generating ${totalFrames} frames at ${fps} fps with ${markers.length} scenes...`);
+
+    // Load all scene images
+    const sceneImages: HTMLImageElement[] = [];
+    for (const marker of markers) {
+      const byteCharacters = atob(marker.imageBase64!);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const imageBlob = new Blob([byteArray], { type: marker.imageMimeType || 'image/png' });
+      const img = await this.loadImage(imageBlob);
+      sceneImages.push(img);
+    }
+
+    console.log(`Loaded ${sceneImages.length} scene images`);
+
+    // Cache for rendered frames
+    let lastSceneIndex = -1;
+    let lastSubtitle = '';
+    let cachedFrameData: Uint8Array | null = null;
+
+    // Generate each frame
+    for (let i = 0; i < totalFrames; i++) {
+      const currentTime = i / fps;
+
+      // Find current scene
+      let currentSceneIndex = 0;
+      for (let j = markers.length - 1; j >= 0; j--) {
+        if (currentTime >= markers[j].timestamp) {
+          currentSceneIndex = j;
+          break;
+        }
+      }
+
+      // Find current subtitle
+      const currentSubtitle = subtitles.find(
+        sub => currentTime >= sub.startSec && currentTime < sub.endSec
+      );
+      const subtitleText = currentSubtitle?.text || '';
+
+      // Only re-render if scene or subtitle changed
+      if (currentSceneIndex !== lastSceneIndex || subtitleText !== lastSubtitle || !cachedFrameData) {
+        cachedFrameData = await this.renderFrame(
+          sceneImages[currentSceneIndex],
+          subtitleText,
+          1280,
+          720,
+          subtitlePosition
+        );
+        lastSceneIndex = currentSceneIndex;
+        lastSubtitle = subtitleText;
+      }
+
+      const frameName = `frame${i.toString().padStart(5, '0')}.jpg`;
+      await this.ffmpeg.writeFile(frameName, new Uint8Array(cachedFrameData));
+
+      if (i % 20 === 0) {
+        onProgress(0.05 + (i / totalFrames) * 0.4);
+        console.log(`Generated frame ${i + 1}/${totalFrames} (Scene ${currentSceneIndex + 1})`);
+      }
+    }
+
+    onProgress(0.45);
+
+    // Write audio file
+    await this.ffmpeg.writeFile(audioName, await fetchFile(audioFile));
+    onProgress(0.50);
+
+    // Set up progress tracking
+    this.ffmpeg.on('progress', ({ progress }) => {
+      onProgress(0.50 + progress * 0.45);
+    });
+
+    // Combine frames into video with audio
+    console.log('Combining frames into video...');
+
+    await this.ffmpeg.exec([
+      '-framerate', fps.toString(),
+      '-i', 'frame%05d.jpg',
+      '-i', audioName,
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-pix_fmt', 'yuv420p',
+      '-shortest',
+      outputName
+    ]);
+
+    onProgress(0.95);
+
+    // Read Output
+    const data = await this.ffmpeg.readFile(outputName);
+
+    // Cleanup
+    try {
       for (let i = 0; i < totalFrames; i++) {
         const frameName = `frame${i.toString().padStart(5, '0')}.jpg`;
         await this.ffmpeg.deleteFile(frameName);
