@@ -132,7 +132,8 @@ export class VideoService {
     baseImage: HTMLImageElement,
     subtitle: string,
     width: number,
-    height: number
+    height: number,
+    subtitlePosition: number // 0-100, 歌詞垂直位置百分比
   ): Promise<Uint8Array> {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -164,7 +165,9 @@ export class VideoService {
       const lines = this.wrapText(ctx, subtitle, maxWidth);
       const lineHeight = fontSize * 1.3;
       const totalHeight = lines.length * lineHeight;
-      const startY = height / 2 - totalHeight / 2 + lineHeight / 2;
+      // 根據使用者設定的位置計算 Y 座標 (0-100% 轉換為實際像素位置)
+      const baseY = (height * subtitlePosition) / 100;
+      const startY = baseY - totalHeight / 2 + lineHeight / 2;
 
       // Draw each line
       lines.forEach((line, index) => {
@@ -452,6 +455,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     imageFile: Blob,
     audioFile: File,
     srtContent: string,
+    subtitlePosition: number, // 0-100, 歌詞垂直位置百分比
     onProgress: (ratio: number) => void
   ): Promise<string> {
     if (!this.loaded) throw new Error("FFmpeg not loaded");
@@ -501,7 +505,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           baseImage, 
           subtitleText,
           1280, 
-          720
+          720,
+          subtitlePosition
         );
         lastSubtitle = subtitleText;
       }

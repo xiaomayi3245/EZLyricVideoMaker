@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AppStep, VideoData } from './types';
+import { AppStep, VideoData, ApiProvider, ApiConfig } from './types';
 import { StepIndicator } from './components/StepIndicator';
 import { Button } from './components/Button';
-import { generateSrtFromAudio, generateCoverImage, setApiKey, getApiKey, clearApiKey } from './services/geminiService';
+import { generateSrtFromAudio, generateCoverImage, setApiConfig, getApiConfig, clearApiConfig } from './services/aiService';
 import { videoService } from './services/ffmpegService';
 
 export default function App() {
@@ -13,6 +13,8 @@ export default function App() {
     imageBase64: null,
     imageMimeType: null,
     generatedVideoUrl: null,
+    subtitlePosition: 50, // 預設中間位置
+    customImagePrompt: '', // 預設空提示詞
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,31 +22,43 @@ export default function App() {
   const [ffmpegLogs, setFfmpegLogs] = useState<string>('');
   const [progress, setProgress] = useState(0);
   
-  // API Key state
+  // API Config state
+  const [apiConfig, setApiConfigState] = useState<ApiConfig | null>(null);
   const [apiKey, setApiKeyState] = useState<string>('');
+  const [apiProvider, setApiProvider] = useState<ApiProvider>(ApiProvider.GOOGLE_GEMINI);
   const [hasApiKey, setHasApiKey] = useState(false);
 
-  // Check for stored API Key on load
+  // Check for stored API Config on load
   useEffect(() => {
-    const storedKey = getApiKey();
-    if (storedKey) {
-      setApiKeyState(storedKey);
+    const storedConfig = getApiConfig();
+    if (storedConfig) {
+      setApiConfigState(storedConfig);
+      setApiKeyState(storedConfig.apiKey);
+      setApiProvider(storedConfig.provider);
       setHasApiKey(true);
     }
   }, []);
 
   const handleSaveApiKey = () => {
     if (apiKey.trim()) {
-      setApiKey(apiKey.trim());
+      const config: ApiConfig = {
+        provider: apiProvider,
+        apiKey: apiKey.trim(),
+        geminiModel: apiProvider === ApiProvider.GOOGLE_GEMINI ? 'gemini-2.5-flash' : undefined,
+        openaiModel: apiProvider === ApiProvider.OPENAI ? 'gpt-4o' : undefined,
+      };
+      setApiConfig(config);
+      setApiConfigState(config);
       setHasApiKey(true);
       setError(null);
     } else {
-      setError('Please enter a valid API Key');
+      setError('請輸入有效的 API Key');
     }
   };
 
   const handleClearApiKey = () => {
-    clearApiKey();
+    clearApiConfig();
+    setApiConfigState(null);
     setApiKeyState('');
     setHasApiKey(false);
   };
@@ -117,7 +131,7 @@ export default function App() {
     setIsProcessing(true);
     setError(null);
     try {
-      const imageResult = await generateCoverImage(data.srtContent);
+      const imageResult = await generateCoverImage(data.srtContent, data.customImagePrompt || undefined);
       setData(prev => ({ 
         ...prev, 
         imageBase64: imageResult.data,
@@ -166,6 +180,7 @@ export default function App() {
         imageBlob, 
         data.audioFile, 
         data.srtContent,
+        data.subtitlePosition, // 傳遞歌詞位置
         (ratio) => setProgress(Math.round(ratio * 100))
       );
 
@@ -237,31 +252,58 @@ export default function App() {
                   <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                   </svg>
-                  <h4 className="text-sm font-medium text-zinc-300">Gemini API Key</h4>
+                  <h4 className="text-sm font-medium text-zinc-300">AI API 設定</h4>
                 </div>
                 {hasApiKey && (
                   <span className="text-xs text-green-400 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    Configured
+                    已設定
                   </span>
                 )}
               </div>
               
               {!hasApiKey ? (
                 <div className="space-y-3">
+                  {/* API Provider Selection */}
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-zinc-400">選擇 AI 服務:</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setApiProvider(ApiProvider.GOOGLE_GEMINI)}
+                        className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                          apiProvider === ApiProvider.GOOGLE_GEMINI
+                            ? 'bg-blue-600 border-blue-500 text-white'
+                            : 'bg-zinc-800 border-zinc-600 text-zinc-400 hover:border-zinc-500'
+                        }`}
+                      >
+                        Google Gemini
+                      </button>
+                      <button
+                        onClick={() => setApiProvider(ApiProvider.OPENAI)}
+                        className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                          apiProvider === ApiProvider.OPENAI
+                            ? 'bg-green-600 border-green-500 text-white'
+                            : 'bg-zinc-800 border-zinc-600 text-zinc-400 hover:border-zinc-500'
+                        }`}
+                      >
+                        OpenAI
+                      </button>
+                    </div>
+                  </div>
+                  
                   <input
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKeyState(e.target.value)}
-                    placeholder="Enter your Gemini API Key..."
+                    placeholder={`輸入您的 ${apiProvider === ApiProvider.GOOGLE_GEMINI ? 'Gemini' : 'OpenAI'} API Key...`}
                     className="w-full px-4 py-2.5 bg-zinc-900 border border-zinc-600 rounded-lg text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveApiKey()}
                   />
                   <div className="flex items-center justify-between">
                     <a 
-                      href="https://aistudio.google.com/apikey" 
+                      href={apiProvider === ApiProvider.GOOGLE_GEMINI ? "https://aistudio.google.com/apikey" : "https://platform.openai.com/api-keys"}
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
@@ -269,24 +311,26 @@ export default function App() {
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                      Get API Key
+                      取得 API Key
                     </a>
                     <Button onClick={handleSaveApiKey} className="!py-2 !px-4 text-sm">
-                      Save
+                      儲存
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500 font-mono">
-                    {apiKey.slice(0, 8)}...{apiKey.slice(-4)}
-                  </span>
-                  <button 
-                    onClick={handleClearApiKey}
-                    className="text-xs text-red-400 hover:text-red-300"
-                  >
-                      Clear
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-zinc-500">
+                      {apiProvider === ApiProvider.GOOGLE_GEMINI ? 'Google Gemini' : 'OpenAI'}: {apiKey.slice(0, 8)}...{apiKey.slice(-4)}
+                    </span>
+                    <button 
+                      onClick={handleClearApiKey}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      清除
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -344,20 +388,58 @@ export default function App() {
         {step === AppStep.EDIT_SRT && (
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-white">Review Subtitles</h3>
-              <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded">SRT Format</span>
+              <h3 className="text-xl font-semibold text-white">編輯字幕與設定</h3>
+              <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded">SRT 格式</span>
             </div>
+            
+            {/* 設定區域 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* 歌詞位置設定 */}
+              <div className="p-4 bg-zinc-800/50 rounded-xl border border-zinc-700">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  歌詞垂直位置: {data.subtitlePosition}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="90"
+                  value={data.subtitlePosition}
+                  onChange={(e) => setData(prev => ({ ...prev, subtitlePosition: parseInt(e.target.value) }))}
+                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-zinc-500 mt-1">
+                  <span>上方</span>
+                  <span>中間</span>
+                  <span>下方</span>
+                </div>
+              </div>
+              
+              {/* 自訂圖像提示詞 */}
+              <div className="p-4 bg-zinc-800/50 rounded-xl border border-zinc-700">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  自訂封面提示詞 (可選)
+                </label>
+                <textarea
+                  value={data.customImagePrompt}
+                  onChange={(e) => setData(prev => ({ ...prev, customImagePrompt: e.target.value }))}
+                  placeholder="留空將自動根據歌詞生成..."
+                  className="w-full h-16 bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-sm text-zinc-300 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+            
+            {/* SRT 編輯區域 */}
             <textarea
               value={data.srtContent}
               onChange={handleSrtChange}
-              className="w-full h-80 bg-zinc-950 border border-zinc-700 rounded-lg p-4 font-mono text-sm text-zinc-300 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-6 resize-none"
+              className="w-full h-64 bg-zinc-950 border border-zinc-700 rounded-lg p-4 font-mono text-sm text-zinc-300 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-6 resize-none"
               placeholder="1
 00:00:01,000 --> 00:00:04,000
-Lyrics will appear here..."
+歌詞將顯示在這裡..."
             />
             <div className="flex justify-end gap-3">
-               <Button variant="secondary" onClick={resetAndStartOver}>Start Over</Button>
-               <Button onClick={confirmSrt}>Generate Art &rarr;</Button>
+               <Button variant="secondary" onClick={resetAndStartOver}>重新開始</Button>
+               <Button onClick={confirmSrt}>生成圖像 &rarr;</Button>
             </div>
           </div>
         )}
