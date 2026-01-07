@@ -85,3 +85,9 @@ GPL-3.0-only — see `LICENSE`.
 - [Gemini AI](https://ai.google.dev/) - AI transcription and image generation
 - [FFmpeg.wasm](https://ffmpegwasm.netlify.app/) - Browser-based video processing
 - [Electron](https://www.electronjs.org/) - Desktop application framework
+
+
+- 照片庫：分類風景、人物、親子
+- KTV字幕
+- 配合歌曲/音樂意境
+- 背景圖會動

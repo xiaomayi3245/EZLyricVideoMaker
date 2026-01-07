@@ -396,7 +396,7 @@ Requirements:
       {/* Header */}
       <header className="mb-12 text-center max-w-2xl">
         <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 tracking-tight">
-          Gemini Lyric Maker
+          Gemini MP3生成字幕影片
         </h1>
         <p className="text-zinc-400 text-lg">
           Transform your audio into a music video with AI-generated subtitles and art.
