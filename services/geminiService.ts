@@ -25,7 +25,7 @@ export const clearApiKey = () => {
 const getAiClient = () => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error("Please enter your Gemini API Key first");
+    throw new Error("請先輸入你的 Gemini API 金鑰");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -96,7 +96,7 @@ export const generateSrtFromAudio = async (audioFile: File): Promise<string> => 
 
   const text = response.text;
   if (!text) {
-    throw new Error("Failed to generate subtitles.");
+    throw new Error("字幕生成失敗");
   }
 
   // Cleanup potential markdown if the model disobeys slightly

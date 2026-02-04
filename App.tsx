@@ -98,7 +98,7 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 25 * 1024 * 1024) { // 25MB limit suggestion
-        setError("File too large. Please select a file under 25MB.");
+        setError("檔案過大，請選擇一個小於25MB的檔案！");
         return;
       }
       setData(prev => ({ ...prev, audioFile: file }));
@@ -119,7 +119,7 @@ export default function App() {
       setStep(AppStep.EDIT_SRT);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Transcription failed. Please try again.");
+      setError(err.message || "轉譯失敗，請重試！");
       setStep(AppStep.UPLOAD);
     } finally {
       setIsProcessing(false);
@@ -155,7 +155,7 @@ export default function App() {
       }));
       setStep(AppStep.PREVIEW_DOWNLOAD);
     } catch (err: any) {
-      setError(err.message || "Image generation failed.");
+      setError(err.message || "影像生成失敗！");
       // Allow retry or fallback? 
       // For now, let user try again or go back
       setStep(AppStep.EDIT_SRT);
@@ -218,7 +218,7 @@ export default function App() {
       setData(prev => ({ ...prev, imageMarkers: updatedMarkers }));
       setStep(AppStep.PREVIEW_DOWNLOAD);
     } catch (err: any) {
-      setError(err.message || '場景圖片生成失敗');
+      setError(err.message || '場景圖片生成失敗！');
       setStep(AppStep.MARK_SCENES);
     } finally {
       setIsProcessing(false);
@@ -270,8 +270,8 @@ Requirements:
         ),
       }));
     } catch (err: any) {
-      console.error('Failed to regenerate scene image:', err);
-      setError(`場景圖片重新生成失敗: ${err.message}`);
+      console.error('場景影像重新生成失敗：', err);
+      setError(`場景圖片重新生成失敗： ${err.message}`);
 
       // 移除生成中狀態
       setData(prev => ({
@@ -289,8 +289,8 @@ Requirements:
 
     // 檢查圖片
     if (data.useMultipleImages) {
-      console.log('Multi-scene mode - validating images...');
-      console.log('Total markers:', data.imageMarkers.length);
+      console.log('多場景模式 - 驗證影像...');
+      console.log('總標記數：', data.imageMarkers.length);
       console.log('Markers with images:', data.imageMarkers.filter(m => m.imageBase64).length);
 
       if (data.imageMarkers.length === 0) {
@@ -359,11 +359,11 @@ Requirements:
       }
 
       setData(prev => ({ ...prev, generatedVideoUrl: videoUrl }));
-      setFfmpegLogs("Done!");
+      setFfmpegLogs("完成！");
 
     } catch (err: any) {
       console.error(err);
-      setError("Video generation failed: " + err.message);
+      setError("影片生成失敗: " + err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -396,10 +396,10 @@ Requirements:
       {/* Header */}
       <header className="mb-12 text-center max-w-2xl">
         <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-4 tracking-tight">
-          Gemini MP3生成字幕影片
+          以MP3生成字幕影片
         </h1>
         <p className="text-zinc-400 text-lg">
-          Transform your audio into a music video with AI-generated subtitles and art.
+          將您的音訊轉換成音樂影片，搭配由 AI 生成的字幕與視覺藝術。
         </p>
       </header>
 
@@ -411,7 +411,7 @@ Requirements:
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-sm hover:underline">Dismiss</button>
+            <button onClick={() => setError(null)} className="text-sm hover:underline">關閉</button>
           </div>
         )}
 
@@ -452,6 +452,7 @@ Requirements:
                       >
                         Google Gemini
                       </button>
+
                       <button
                         onClick={() => setApiProvider(ApiProvider.OPENAI)}
                         className={`px-3 py-1 text-xs rounded-md border transition-colors ${apiProvider === ApiProvider.OPENAI
@@ -461,6 +462,7 @@ Requirements:
                       >
                         OpenAI
                       </button>
+
                     </div>
                   </div>
 
@@ -526,9 +528,9 @@ Requirements:
                 </div>
                 <div>
                   <h3 className={`text-xl font-semibold mb-1 ${hasApiKey ? 'text-white' : 'text-zinc-500'}`}>
-                    {hasApiKey ? 'Upload Song' : 'Set API Key First'}
+                    {hasApiKey ? '上傳聲音檔案' : '請先設定API金鑰'}
                   </h3>
-                  <p className="text-zinc-500">MP3 or WAV files, max 25MB</p>
+                  <p className="text-zinc-500">MP3 或 WAV 檔案，最大 25MB</p>
                 </div>
               </div>
             </div>
@@ -549,7 +551,7 @@ Requirements:
             </div>
             <div>
               <h3 className="text-2xl font-bold text-white mb-2">Listening...</h3>
-              <p className="text-zinc-400">Gemini is transcribing lyrics and timing.</p>
+              <p className="text-zinc-400">正在轉譯歌詞中...</p>
             </div>
           </div>
         )}
@@ -715,7 +717,7 @@ Requirements:
                   生成場景 {sceneGenerationProgress.current} / {sceneGenerationProgress.total}
                 </p>
               ) : (
-                <p className="text-zinc-400">Creating cover art based on your lyrics.</p>
+                <p className="text-zinc-400">根據歌詞創作封面圖片。</p>
               )}
             </div>
           </div>
@@ -728,7 +730,7 @@ Requirements:
               {/* Cover Art / Scene Images Preview */}
               <div className="flex flex-col gap-2">
                 <h4 className="text-sm font-medium text-zinc-400">
-                  {data.useMultipleImages ? `場景圖片 (${data.imageMarkers.length})` : 'Generated Cover Art'}
+                  {data.useMultipleImages ? `場景圖片 (${data.imageMarkers.length})` : '生成封面圖片'}
                 </h4>
 
                 {data.useMultipleImages ? (
@@ -796,13 +798,13 @@ Requirements:
               {/* Video Action Area */}
               <div className="flex flex-col justify-between gap-4">
                 <div>
-                  <h4 className="text-sm font-medium text-zinc-400 mb-2">Subtitles</h4>
+                  <h4 className="text-sm font-medium text-zinc-400 mb-2">字幕</h4>
                   <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 h-48 overflow-y-auto text-xs font-mono text-zinc-500">
                     <pre className="whitespace-pre-wrap">{data.srtContent}</pre>
                   </div>
                   <button onClick={downloadSrt} className="mt-2 text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download .srt file
+                    下載 .srt 檔案
                   </button>
                 </div>
 
@@ -815,10 +817,10 @@ Requirements:
                             onClick={generateVideo}
                             className="w-full"
                           >
-                            🎬 Create MP4 Video
+                            🎬 建立 MP4 影片
                           </Button>
                           <p className="text-xs text-zinc-500 text-center">
-                            Uses browser processing, may take a moment
+                            使用瀏覽器處理中，請稍後...
                           </p>
                         </>
                       ) : (
@@ -827,7 +829,7 @@ Requirements:
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium text-zinc-200">Generating Video...</span>
+                              <span className="text-sm font-medium text-zinc-200">影片生成中...</span>
                             </div>
                             <span className="text-2xl font-bold text-blue-400">{progress}%</span>
                           </div>
@@ -848,7 +850,7 @@ Requirements:
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span className="font-mono truncate">{ffmpegLogs || 'Preparing...'}</span>
+                            <span className="font-mono truncate">{ffmpegLogs || '準備中...'}</span>
                           </div>
                         </div>
                       )}
@@ -856,7 +858,7 @@ Requirements:
                   ) : (
                     <div className="flex flex-col gap-3 animate-fade-in">
                       <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm text-center">
-                        Video Ready!
+                        影片已準備就緒！
                       </div>
                       <a
                         href={data.generatedVideoUrl}
@@ -864,12 +866,12 @@ Requirements:
                         className="w-full"
                       >
                         <Button className="w-full" variant="primary">
-                          Download Video
+                          下載影片
                           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         </Button>
                       </a>
                       <Button onClick={resetAndStartOver} variant="secondary" className="w-full">
-                        Make Another
+                        再做一個
                       </Button>
                     </div>
                   )}
@@ -881,7 +883,7 @@ Requirements:
       </main>
 
       <footer className="mt-12 text-zinc-600 text-sm">
-        Powered by Gemini Flash 2.5 & FFmpeg.wasm
+        Powered by Gemini
       </footer>
     </div>
   );

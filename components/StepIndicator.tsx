@@ -6,11 +6,11 @@ interface StepIndicatorProps {
 }
 
 const steps = [
-  { id: AppStep.UPLOAD, label: "Upload" },
-  { id: AppStep.TRANSCRIBING, label: "Transcribe" },
-  { id: AppStep.EDIT_SRT, label: "Edit Subs" },
-  { id: AppStep.GENERATING_IMAGE, label: "Art" },
-  { id: AppStep.PREVIEW_DOWNLOAD, label: "Done" },
+  { id: AppStep.UPLOAD, label: "上傳" },
+  { id: AppStep.TRANSCRIBING, label: "轉譯" },
+  { id: AppStep.EDIT_SRT, label: "編輯字幕" },
+  { id: AppStep.GENERATING_IMAGE, label: "藝術" },
+  { id: AppStep.PREVIEW_DOWNLOAD, label: "完成" },
 ];
 
 export const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
